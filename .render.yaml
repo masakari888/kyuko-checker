@@ -1,0 +1,5 @@
+services: []
+cron:
+  - name: kyuko-fetch-job
+    schedule: "0 22 * * *"  # JST 朝7時（RenderはUTC）
+    command: "python kyuko_check.py"
