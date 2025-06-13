@@ -5,14 +5,19 @@ import re
 from datetime import datetime
 from collections import defaultdict
 import os
+import sys
 
 def fetch_kyuko_text():
     url = "https://portal.shuchiin.ac.jp/"
-    response = requests.get(url)
-    response.encoding = response.apparent_encoding
-    soup = BeautifulSoup(response.text, "lxml")
-    p_tag = soup.select_one("#login-infomation p")
-    return p_tag.get_text(separator="\n") if p_tag else ""
+    try:
+        response = requests.get(url, timeout=10)
+        response.encoding = response.apparent_encoding
+        soup = BeautifulSoup(response.text, "lxml")
+        p_tag = soup.select_one("#login-infomation p")
+        return p_tag.get_text(separator="\n", strip=True) if p_tag else ""
+    except requests.exceptions.RequestException as e:
+        print(f"❌ スクレイピングエラー: {e}")
+        return ""
 
 def normalize_kyuko_lines(text):
     lines = text.split("\n")
@@ -81,13 +86,22 @@ def send_line_notify(message: str):
         print(f"❌ LINE通知失敗: {res.status_code} - {res.text}")
 
 def main():
-    print("✅ スクレイピング開始")
+    print("✅ スクリプト開始")
     raw = fetch_kyuko_text()
+    if not raw:
+        print("⚠️ 休講情報の取得に失敗")
+        sys.exit(1)
+
+    print("✅ データ取得成功")
     normalized = normalize_kyuko_lines(raw)
     grouped = group_and_sort_by_date(normalized)
     save_as_json(grouped)
+    print("✅ JSON保存完了")
     msg = format_message(grouped)
+    print("✅ メッセージ整形完了")
     send_line_notify(msg)
+    print("✅ スクリプト終了")
+    sys.exit(0)
 
 if __name__ == "__main__":
     main()
